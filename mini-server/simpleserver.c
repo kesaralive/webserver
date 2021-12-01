@@ -15,6 +15,11 @@ int main(int argc, char *argv[])
     char *buffer = malloc(bufsize);
     struct sockaddr_in address;
 
+    /***
+     * AF_INET for Internet domain sockets.
+     * SOCK_STREAM - Byte-stream socket
+     ***/
+
     if((create_socket = socket(AF_INET, SOCK_STREAM, 0)) > 0){
         printf("The socket was created\n");
     }
@@ -32,6 +37,12 @@ int main(int argc, char *argv[])
             perror("server: listen");
             exit(1);
         }
+        /***
+         * accept() - accept a new connection on a socket
+         *  
+         ***/
+        //accept a new connection on a socket
+
         if((new_socket = accept(create_socket,(struct sockaddr *) &address, &addrlen))<0){
             perror("server: accept");
             exit(1);
