@@ -20,6 +20,7 @@ void acceptRequests(int clientSock);
 int getLine(int socket, char *buffer, int size);
 void cat(int client, FILE *resource);
 void serveFile(int client, const char *filename);
+void executeCGI(int client, const char *path, const char *method, const char *query_string);
 
 /*HEADERS*/
 void headers(int client, const char *filename);
@@ -113,6 +114,7 @@ void acceptRequests(int clientSock)
     if(strcasecmp(requestMethod, "GET") && strcasecmp(requestMethod, "POST"))
     {
         unimplemented(clientSock); //send unimplemented header
+        return;
     }
 
     if(strcasecmp(requestMethod, "POST") == 0)
@@ -165,7 +167,7 @@ void acceptRequests(int clientSock)
     }
     else
     {
-        if((st.st_mode & __S_IFMT) == __S_IFDIR)
+        if((st.st_mode & S_IFMT) == S_IFDIR)
         {
             strcat(filePath, "/index.html");
         }
@@ -181,43 +183,10 @@ void acceptRequests(int clientSock)
         }
         else
         {
-            // executeCGI(clientSock, filePath, requestMethod, queryString);
-            exit(1);
+            executeCGI(clientSock, filePath, requestMethod, queryString);
         }
     }
     close(clientSock);
-}
-
-int get_line(int sock, char *buf, int size)
-{
- int i = 0;
- char c = '\0';
- int n;
-
- while ((i < size - 1) && (c != '\n'))
- {
-  n = recv(sock, &c, 1, 0);
-  /* DEBUG printf("%02X\n", c); */
-  if (n > 0)
-  {
-   if (c == '\r')
-   {
-    n = recv(sock, &c, 1, MSG_PEEK);
-    /* DEBUG printf("%02X\n", c); */
-    if ((n > 0) && (c == '\n'))
-     recv(sock, &c, 1, 0);
-    else
-     c = '\n';
-   }
-   buf[i] = c;
-   i++;
-  }
-  else
-   c = '\n';
- }
- buf[i] = '\0';
- 
- return(i);
 }
 
 /*************************************/
@@ -364,11 +333,11 @@ void notFound(int client)
     send(client, buf, strlen(buf), 0);
     sprintf(buf, "<HTML><TITLE>Not Found</TITLE>\r\n");
     send(client, buf, strlen(buf), 0);
-    sprintf(buf, "<BODY><P>The server could not fulfill\r\n");
+    sprintf(buf, "<BODY><h1>Not Found</h1>\r\n");
     send(client, buf, strlen(buf), 0);
-    sprintf(buf, "your request because the resource specified\r\n");
+    sprintf(buf, "<p>The requested url is not found in this server</p>\r\n");
     send(client, buf, strlen(buf), 0);
-    sprintf(buf, "is unavailable or nonexistent.\r\n");
+    sprintf(buf, "<hr>\r\n");
     send(client, buf, strlen(buf), 0);
     sprintf(buf, "</BODY></HTML>\r\n");
     send(client, buf, strlen(buf), 0);
@@ -432,11 +401,11 @@ void serveFile(int clientSock, const char *filename)
 
     buffer[0] = 'A'; buffer[1] = '\0';
     while((numchars>0) && strcmp("\n",buffer)) /* read & discard headers*/
-        numchars = get_line(clientSock, buffer, sizeof(buffer));
+        numchars = getLine(clientSock, buffer, sizeof(buffer));
     
     resource = fopen(filename, "r");
     if(resource == NULL)
-        printf("NOT FOUND");
+        notFound(clientSock);
     else
     {
         headers(clientSock, filename);
@@ -445,12 +414,105 @@ void serveFile(int clientSock, const char *filename)
     fclose(resource);
 }
 
+/**********************************************************************/
+/* Task: Execute a CGI script.  Will need to set environment variables as 
+ *       appropriate.
+ * Parameters: client socket descriptor
+ *             path to the CGI script */
+/**********************************************************************/
+void executeCGI(int client, const char *path, const char *method, const char *query_string)
+{
+ char buf[1024];
+ int cgi_output[2];
+ int cgi_input[2];
+ pid_t pid;
+ int status;
+ int i;
+ char c;
+ int numchars = 1;
+ int content_length = -1;
+
+ buf[0] = 'A'; buf[1] = '\0';
+ if (strcasecmp(method, "GET") == 0)
+  while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
+   numchars = getLine(client, buf, sizeof(buf));
+ else    /* POST */
+ {
+  numchars = getLine(client, buf, sizeof(buf));
+  while ((numchars > 0) && strcmp("\n", buf))
+  {
+   buf[15] = '\0';
+   if (strcasecmp(buf, "Content-Length:") == 0)
+    content_length = atoi(&(buf[16]));
+   numchars = getLine(client, buf, sizeof(buf));
+  }
+  if (content_length == -1) {
+   badRequest(client);
+   return;
+  }
+ }
+
+ sprintf(buf, "HTTP/1.0 200 OK\r\n");
+ send(client, buf, strlen(buf), 0);
+
+ if (pipe(cgi_output) < 0) {
+  cannotExec(client);
+  return;
+ }
+ if (pipe(cgi_input) < 0) {
+  cannotExec(client);
+  return;
+ }
+
+ if ( (pid = fork()) < 0 ) {
+  cannotExec(client);
+  return;
+ }
+ if (pid == 0)  /* child: CGI script */
+ {
+  char meth_env[255];
+  char query_env[255];
+  char length_env[255];
+
+  dup2(cgi_output[1], 1);
+  dup2(cgi_input[0], 0);
+  close(cgi_output[0]);
+  close(cgi_input[1]);
+  sprintf(meth_env, "REQUEST_METHOD=%s", method);
+  putenv(meth_env);
+  if (strcasecmp(method, "GET") == 0) {
+   sprintf(query_env, "QUERY_STRING=%s", query_string);
+   putenv(query_env);
+  }
+  else {   /* POST */
+   sprintf(length_env, "CONTENT_LENGTH=%d", content_length);
+   putenv(length_env);
+  }
+  execl(path, path, NULL);
+  exit(0);
+ } else {    /* parent */
+  close(cgi_output[1]);
+  close(cgi_input[0]);
+  if (strcasecmp(method, "POST") == 0)
+   for (i = 0; i < content_length; i++) {
+    recv(client, &c, 1, 0);
+    write(cgi_input[1], &c, 1);
+   }
+  while (read(cgi_output[0], &c, 1) > 0)
+   send(client, &c, 1, 0);
+
+  close(cgi_output[0]);
+  close(cgi_input[1]);
+  waitpid(pid, &status, 0);
+ }
+}
+
 /***MAIN (Driver code)***/
 int main()
 {
     int serverSocket = -1;
     int clientSocket = -1;
-    unsigned short port = 8080;
+    unsigned short port = 0;
 
     struct sockaddr_in clientAddress;
     int clientAddressLength = sizeof(clientAddress);
