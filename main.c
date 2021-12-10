@@ -8,11 +8,38 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <ctype.h>
-#include <sys/stat.h>
 #include <strings.h>
 #include <string.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #define ISspace(x) isspace((int)(x))
+
+typedef struct {
+ char *ext;
+ char *mediatype;
+} extn;
+
+size_t total_bytes_sent = 0;
+
+//Possible media types
+extn extensions[] ={
+ {"gif", "image/gif" },
+ {"txt", "text/plain" },
+ {"jpg", "image/jpg" },
+ {"jpeg","image/jpeg"},
+ {"png", "image/png" },
+ {"ico", "image/ico" },
+ {"zip", "image/zip" },
+ {"gz",  "image/gz"  },
+ {"tar", "image/tar" },
+ {"htm", "text/html" },
+ {"html","text/html" },
+ {"php", "text/html" },
+ {"pdf","application/pdf"},
+ {"zip","application/octet-stream"},
+ {"rar","application/octet-stream"},
+ {0,0} };
 
 int startup(unsigned short *port);
 void errorDie(const char *identifier);
@@ -21,6 +48,7 @@ int getLine(int socket, char *buffer, int size);
 void cat(int client, FILE *resource);
 void serveFile(int client, const char *filename);
 void executeCGI(int client, const char *path, const char *method, const char *query_string);
+int get_file_size(int fd);
 
 /*HEADERS*/
 void headers(int client, const char *filename);
@@ -28,6 +56,8 @@ void badRequest(int client); //exec
 void cannotExec(int client); //exec
 void unimplemented(int client);
 void notFound(int client);
+
+
 
 /*************************************/
 /**This function begins the listening for web connections on a specific port.
@@ -127,12 +157,14 @@ void acceptRequests(int clientSock)
     {
         j++;
     }
+    
     while(!ISspace(buffer[j]) && (i < sizeof(url) - 1) && (j < sizeof(buffer)))
     {
         url[i] = buffer[j];
         i++;
         j++;
     }
+
     url[i] = '\0';
 
     if(strcasecmp(requestMethod, "GET") == 0)
@@ -387,6 +419,16 @@ void cat(int client, FILE *resource)
     }
 }
 
+/***/
+//helper function to get filesize
+/***/
+int get_file_size(int fd) {
+ struct stat stat_struct;
+ if (fstat(fd, &stat_struct) == -1)
+  return (1);
+ return (int) stat_struct.st_size;
+}
+
 /**************************************/
 /**
  * Task: Opens the file to read.
@@ -397,21 +439,65 @@ void serveFile(int clientSock, const char *filename)
 {
     FILE *resource = NULL;
     int numchars = 1;
-    char buffer[1024];
+    char buffer[2048];
 
-    buffer[0] = 'A'; buffer[1] = '\0';
-    while((numchars>0) && strcmp("\n",buffer)) /* read & discard headers*/
-        numchars = getLine(clientSock, buffer, sizeof(buffer));
-    
-    resource = fopen(filename, "r");
-    if(resource == NULL)
+    memset(buffer,0,2048);
+    read(clientSock, buffer, 2047);
+    printf("%s\n",buffer);
+
+    int fd1,length;
+    fd1 = open(filename, O_RDONLY);
+
+
+    if(fd1 == -1)
+    {
         notFound(clientSock);
+    }
     else
     {
-        headers(clientSock, filename);
-        cat(clientSock, resource);
+        int len = strlen(filename);
+        const char *last_four = &filename[len-4];
+        printf("\n%s\n",last_four);
+
+        if(strcmp(last_four,"html") == 0)
+        {
+            printf("\n%s\n",last_four);
+            headers(clientSock, filename);
+        } 
+
+        if((length = get_file_size(fd1)) == -1)
+        {
+            printf("Error in getting size! \n");
+        }
+        ssize_t bytes_sent;
+        // size_t total_bytes_sent = 0;
+
+        char buffer[length];
+        if ((bytes_sent = sendfile(clientSock, fd1, NULL, length)) <= 0) 
+        {
+         perror("sendfile");
+        }
+        printf("File %s , Sent %i\n",filename, bytes_sent);
+        close(fd1);
     }
-    fclose(resource);
+
+
+
+    // char buffer[1024];
+
+    // buffer[0] = 'A'; buffer[1] = '\0';
+    // while((numchars>0) && strcmp("\n",buffer)) /* read & discard headers*/
+    //     numchars = getLine(clientSock, buffer, sizeof(buffer));
+    
+    // resource = fopen(filename, "r");
+    // if(resource == NULL)
+    //     notFound(clientSock);
+    // else
+    // {
+    //     headers(clientSock, filename);
+    //     cat(clientSock, resource);
+    // }
+    // fclose(resource);
 }
 
 /**********************************************************************/
