@@ -459,11 +459,23 @@ void serveFile(int clientSock, const char *filename)
         const char *last_four = &filename[len-4];
         printf("\n%s\n",last_four);
 
-        if(strcmp(last_four,"html") == 0)
+        char* s = strchr(filename, '.');
+        printf("\n%s\n",s+1);
+
+        for(int i=0; extensions[i].ext != NULL; i++)
         {
-            printf("\n%s\n",last_four);
-            headers(clientSock, filename);
-        } 
+            if(strcmp(s + 1, extensions[i].ext) == 0)
+            {
+                if(strcmp(extensions[i].ext, "php") == 0)
+                {
+                    printf("It's php");
+                    exit(1);
+                }else if(strcmp(extensions[i].ext, "html") == 0)
+                {
+                    headers(clientSock, filename);
+                }
+            }
+        }
 
         if((length = get_file_size(fd1)) == -1)
         {
