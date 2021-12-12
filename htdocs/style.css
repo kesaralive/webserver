@@ -1,0 +1,64 @@
+* {
+  font-family: sans-serif;
+  padding: 0;
+  margin: 0;
+}
+
+nav {
+  background: black;
+}
+
+section {
+  width: 80%;
+  display: flex;
+  margin: 50px auto;
+  justify-content: space-around;
+}
+
+.navbar {
+  display: flex;
+  width: 100%;
+  justify-content: space-around;
+  padding: 20px 0 20px 0;
+  color: white;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  cursor: pointer;
+  color: white;
+}
+
+.menu-item {
+  margin: 0 15px;
+  text-decoration: none;
+  color: white;
+}
+
+.primary {
+  display: flex;
+  align-items: center;
+  color: white;
+  font-weight: 500;
+}
+
+.secondary {
+  font-size: 24px;
+  color: white;
+}
+
+.secondary a {
+  margin: 0 6px;
+  color: white;
+}
+
+.cats {
+  height: 300px;
+}
+
+.cat-video {
+  background: black;
+  padding: 60px;
+}
