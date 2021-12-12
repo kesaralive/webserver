@@ -52,8 +52,7 @@ void executeCGI(int client, const char *path, const char *method, const char *qu
 int get_file_size(int fd);
 
 /*HEADERS*/
-void headers(int client, const char *filename);
-void pdfheaders(int client, const char *filename);
+void headers(int client, const char *filename, const char *mediatype);
 void badRequest(int client); //exec
 void cannotExec(int client); //exec
 void unimplemented(int client);
@@ -220,22 +219,6 @@ void acceptRequests(int clientSock)
 
         serveFile(clientSock, filePath);
 
-        // if(!cgiF)
-        // {
-        //     serveFile(clientSock, filePath);
-        // }
-        // else if(strcmp(s,".css") == 0)
-        // {
-        //     serveFile(clientSock, filePath);
-        // }
-        // else if(cgiF && strcmp(s,".php") == 0)
-        // {
-        //     printf("\nPHP SCRIPT\n");
-        //     executeCGI(clientSock, filePath, requestMethod, queryString);
-        // }else
-        // {
-        //     serveFile(clientSock, filePath);
-        // }
     }
     close(clientSock);
 }
@@ -308,56 +291,20 @@ void errorDie(const char *identifier)
 
 /*************************************/
 /**
- * Task: Returns the informational HTTP headers for CSS
- * Parameters: the socket to print the headers on
- *              the name of the file.
-*/
-/*************************************/
-void cssheaders(int client, const char *filename)
-{
-    char buf[1024];
-    (void)filename;
-    strcpy(buf, "HTTP/1.1 200 OK\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "Content-Type: text/css; charset=UTF-8\r\n\r\n");
-    send(client, buf, strlen(buf),0);
-}
-
-/*************************************/
-/**
- * Task: Returns the informational HTTP headers for PDF
- * Parameters: the socket to print the headers on
- *              the name of the file.
-*/
-/*************************************/
-void pdfheaders(int client, const char *filename)
-{
-    char buf[1024];
-    (void)filename;
-    strcpy(buf, "HTTP/1.1 200 OK\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "Content-Type: application/pdf; charset=UTF-8\r\n\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "<!DOCTYPE html>\r\n");
-    send(client, buf, strlen(buf),0);
-}
-
-/*************************************/
-/**
  * Task: Returns the informational HTTP headers
  * Parameters: the socket to print the headers on
  *              the name of the file.
 */
 /*************************************/
-void headers(int client, const char *filename)
-{
-    char buf[1024];
+
+void headers(int client, const char *filename, const char *mediatype){
+    char buf[1048];
     (void)filename;
     strcpy(buf, "HTTP/1.1 200 OK\r\n");
     send(client, buf, strlen(buf),0);
-    strcpy(buf, "Content-Type: text/html; charset=UTF-8\r\n\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "<!DOCTYPE html>\r\n");
+    strcpy(buf, "Content-Type: ");
+    strcat(buf, mediatype);
+    strcat(buf,"; charset=UTF-8\r\n\r\n");
     send(client, buf, strlen(buf),0);
 }
 
@@ -539,18 +486,12 @@ void serveFile(int clientSock, const char *filename)
             {
                 if(strcmp(extensions[i].ext, "php") == 0)
                 {
+
                     printf("\nFile extension PHP\n");
-                    // phpCgi(filename, clientSock);
                     executeCGI(clientSock, filename,"GET", NULL);
-                }else if(strcmp(extensions[i].ext, "html") == 0)
-                {
-                    headers(clientSock, filename);
-                }else if(strcmp(extensions[i].ext, "pdf") == 0)
-                {
-                    pdfheaders(clientSock, filename);
-                }else if(strcmp(extensions[i].ext, "css") == 0)
-                {
-                    cssheaders(clientSock, filename);
+
+                }else{
+                    headers(clientSock,filename, extensions[i].mediatype);
                 }
             }
         }
@@ -558,36 +499,19 @@ void serveFile(int clientSock, const char *filename)
         if((length = get_file_size(fd1)) == -1)
         {
             printf("Error in getting size! \n");
-        }
-        ssize_t bytes_sent;
-        // size_t total_bytes_sent = 0;
+        }else{
+            ssize_t bytes_sent;
+            // size_t total_bytes_sent = 0;
 
-        char buffer[length];
-        if ((bytes_sent = sendfile(clientSock, fd1, NULL, length)) <= 0) 
-        {
-         perror("sendfile");
+            char buffer[length];
+            if ((bytes_sent = sendfile(clientSock, fd1, NULL, length)) <= 0) 
+            {
+                perror("sendfile");
+            }
+            printf("File %s , Sent %i\n",filename, bytes_sent);
+            close(fd1);
         }
-        printf("File %s , Sent %i\n",filename, bytes_sent);
-        close(fd1);
     }
-
-
-
-    // char buffer[1024];
-
-    // buffer[0] = 'A'; buffer[1] = '\0';
-    // while((numchars>0) && strcmp("\n",buffer)) /* read & discard headers*/
-    //     numchars = getLine(clientSock, buffer, sizeof(buffer));
-    
-    // resource = fopen(filename, "r");
-    // if(resource == NULL)
-    //     notFound(clientSock);
-    // else
-    // {
-    //     headers(clientSock, filename);
-    //     cat(clientSock, resource);
-    // }
-    // fclose(resource);
 }
 
 /**********************************************************************/
@@ -611,6 +535,7 @@ void executeCGI(int client, const char *path, const char *method, const char *qu
  printf("\n Client: %i, Path: %s, Method: %s, Query String: %s\n", client, path, method, query_string);
 
  buf[0] = 'A'; buf[1] = '\0';
+ 
 //  if (strcasecmp(method, "GET") == 0)
 //   while ((numchars > 0) && strcmp("\n", buf))  /* read & discard headers */
 //    numchars = getLine(client, buf, sizeof(buf));
@@ -630,11 +555,7 @@ void executeCGI(int client, const char *path, const char *method, const char *qu
 //   }
 //  }
  
- printf("\nphp headers\n");
-//  sprintf(buf, "HTTP/1.0 200 OK\r\n");
-//  send(client, buf, strlen(buf), 0);
  headersPHP(client, path);
- printf("\nheaders sent\n");
 
  if (pipe(cgi_output) < 0) {
   cannotExec(client);
@@ -649,8 +570,6 @@ void executeCGI(int client, const char *path, const char *method, const char *qu
   cannotExec(client);
   return;
  }
-
- printf("\nsuccess\n");
 
  if (pid == 0)  /* child: CGI script */
  {
@@ -683,12 +602,13 @@ void executeCGI(int client, const char *path, const char *method, const char *qu
    printf("\nContent Length: %i\n",content_length);
    putenv(length_env);
   }
-//   execl(path, path, NULL);
+
   putenv("SERVER_PROTOCOL=HTTP/1.1");
   putenv("REMOTE_HOST=127.0.0.1");
   putenv("REDIRECT_STATUS=true");
   execl("/usr/bin/php-cgi", "php-cgi", NULL);
   exit(0);
+
  } else {    /* parent */
 
   printf("\nparent process\n");
@@ -723,45 +643,14 @@ int main()
 
     printf("web-server is running on port no: %d\n", port);
 
-    // char webpage[] = 
-    // "HTTP/1.1 200OK\r\n"
-    // "Content-Type: text/html; charset=UTF-8\r\n\r\n"
-    // "<!DOCTYPE html>\r\n";
-
-    // FILE *file = fopen("index.html","rb");
-    // if(fseek(file,0,SEEK_END)==-1){
-    //     perror("The file was not seeked");
-    //     exit(1);
-    // }
-
-    // long fsize = ftell(file);
-    // rewind(file);
-    // char *msg = (char*) malloc(fsize);
-    // fread(msg,fsize,1,file);
-    // fclose(file);
-
     while(1){
         if((clientSocket = accept(serverSocket,(struct sockaddr *) &clientAddress, &clientAddressLength))<0)
         {
             errorDie("accept");
         }
-
         acceptRequests(clientSocket);
-
-        // if(clientSocket>0){
-        //     printf("The Client is connected... \n");
-        // }
-
-        // recv(clientSocket, buffer, bufsize, 0);
-        // printf("%s\n", buffer);
-        // write(clientSocket,webpage,sizeof(webpage));
-        // write(clientSocket,msg,fsize);
-        // close(clientSocket);
     }
 
     close(serverSocket);
     return 0;
-
 }
-
-
