@@ -1,16 +1,65 @@
+<!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
-    <h1>BlaBlaBla</h1>
-    <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit. Distinctio, alias odio fugiat dicta rem rerum non labore sunt, commodi unde reprehenderit optio, praesentium officia id mollitia facere necessitatibus neque atque sequi eveniet. Ratione similique impedit cumque veritatis tempore repellendus ducimus velit assumenda rem est voluptate, sint nihil blanditiis mollitia cum eos eaque adipisci laudantium amet? Numquam totam quod nostrum. Veritatis, dolorem natus. Itaque est sint nesciunt minus voluptatem distinctio sunt sed ullam, repellat, ab optio saepe atque enim. Officiis molestias sunt esse beatae tempora culpa perferendis magnam temporibus animi. Doloremque a alias culpa repudiandae ipsum qui ad vel deserunt reiciendis.</p>
-    <img src="index.jpeg" alt="Image file">
-    <img src="cat.jpeg" alt="Image file">
-    <a href="./blog/index.html">Blog</a>
-
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      rel="stylesheet"
+      href="https://pro.fontawesome.com/releases/v5.10.0/css/all.css"
+      integrity="sha384-AYmEC3Yw5cVb3ZcuHtOA93w35dYTsvhLPVnYs9eStHfGJvOvKxVfELGroGkvsg+p"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <nav>
+      <div class="navbar">
+        <div class="logo">My WebServer</div>
+        <div class="primary">
+          <a href="index.html" class="menu-item">Home</a>
+          <a href="docs.html" class="menu-item">Files</a>
+          <a href="index.php" class="menu-item">PHP</a>
+          <a href="about.html" class="menu-item">About</a>
+        </div>
+        <div class="secondary">
+          <a
+            target="_blank"
+            href="https://github.com/kesaralive/webserver.git"
+            class="github"
+            ><i class="fab fa-github"></i
+          ></a>
+          <a
+            target="_blank"
+            href="https://hub.docker.com/repository/docker/kesaralive/simple_webserver"
+            class="docker"
+            ><i class="fab fa-docker"></i
+          ></a>
+        </div>
+      </div>
+    </nav>
+    <section>
+      <div>
+        <img src="img/cat.jpg" alt="Cat jpeg" class="cats" />
+        <h1>Cat JPG</h1>
+      </div>
+      <div>
+        <img src="img/cat.png" alt="Cat png" class="cats" />
+        <h1>Cat PNG</h1>
+      </div>
+      <div>
+        <img src="img/cat.gif" alt="Cat gif" class="cats" />
+        <h1>Cat GIF</h1>
+      </div>
+    </section>
+    <section class="cat-video">
+      <div>
+        <video width="320" height="240" controls>
+          <source src="cat.mp4" type="video/mp4" />
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    </section>
+  </body>
 </html>
