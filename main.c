@@ -54,10 +54,6 @@ int get_file_size(int fd);
 /*HEADERS*/
 void headers(int client, const char *filename);
 void pdfheaders(int client, const char *filename);
-void cssheaders(int client, const char *filename);
-void rarheaders(int client, const char *filename);
-void zipheaders(int client, const char *filename);
-void jsheaders(int client, const char *filename);
 void badRequest(int client); //exec
 void cannotExec(int client); //exec
 void unimplemented(int client);
@@ -105,7 +101,7 @@ int startup(unsigned short *port)
         *port = ntohs(name.sin_port);
     }
 
-    if(listen(sockfd, 100) < 0)
+    if(listen(sockfd, 10) < 0)
     {
         errorDie("listen");
     } 
@@ -327,8 +323,6 @@ void cssheaders(int client, const char *filename)
     send(client, buf, strlen(buf),0);
 }
 
-
-
 /*************************************/
 /**
  * Task: Returns the informational HTTP headers for PDF
@@ -345,57 +339,6 @@ void pdfheaders(int client, const char *filename)
     strcpy(buf, "Content-Type: application/pdf; charset=UTF-8\r\n\r\n");
     send(client, buf, strlen(buf),0);
     strcpy(buf, "<!DOCTYPE html>\r\n");
-    send(client, buf, strlen(buf),0);
-}
-
-/*************************************/
-/**
- * Task: Returns the informational HTTP headers for RAR
- * Parameters: the socket to print the headers on
- *              the name of the file.
-*/
-/*************************************/
-void rarheaders(int client, const char *filename)
-{
-    char buf[1024];
-    (void)filename;
-    strcpy(buf, "HTTP/1.1 200 OK\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "Content-Type: application/octet-stream; charset=UTF-8\r\n\r\n");
-    send(client, buf, strlen(buf),0);
-}
-
-/*************************************/
-/**
- * Task: Returns the informational HTTP headers for ZIP
- * Parameters: the socket to print the headers on
- *              the name of the file.
-*/
-/*************************************/
-void zipheaders(int client, const char *filename)
-{
-    char buf[1024];
-    (void)filename;
-    strcpy(buf, "HTTP/1.1 200 OK\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "Content-Type: application/octet-stream; charset=UTF-8\r\n\r\n");
-    send(client, buf, strlen(buf),0);
-}
-
-/*************************************/
-/**
- * Task: Returns the informational HTTP headers for Javascript
- * Parameters: the socket to print the headers on
- *              the name of the file.
-*/
-/*************************************/
-void jsheaders(int client, const char *filename)
-{
-    char buf[1024];
-    (void)filename;
-    strcpy(buf, "HTTP/1.1 200 OK\r\n");
-    send(client, buf, strlen(buf),0);
-    strcpy(buf, "Content-Type: application/javascript; charset=UTF-8\r\n\r\n");
     send(client, buf, strlen(buf),0);
 }
 
@@ -596,6 +539,8 @@ void serveFile(int clientSock, const char *filename)
             {
                 if(strcmp(extensions[i].ext, "php") == 0)
                 {
+                    printf("\nFile extension PHP\n");
+                    // phpCgi(filename, clientSock);
                     executeCGI(clientSock, filename,"GET", NULL);
                 }else if(strcmp(extensions[i].ext, "html") == 0)
                 {
@@ -606,17 +551,6 @@ void serveFile(int clientSock, const char *filename)
                 }else if(strcmp(extensions[i].ext, "css") == 0)
                 {
                     cssheaders(clientSock, filename);
-                }else if(strcmp(extensions[i].ext, "rar") == 0)
-                {
-                    rarheaders(clientSock, filename);
-                }else if(strcmp(extensions[i].ext, "zip") == 0)
-                {
-                    zipheaders(clientSock, filename);
-                }else if(strcmp(extensions[i].ext, "js") == 0)
-                {
-                    jsheaders(clientSock, filename);
-                }else{
-                    notFound(clientSock);
                 }
             }
         }
